@@ -6,9 +6,9 @@ services:
     image: rc-park-weather-forcaster:latest
     environment:
       # Override any setting using double-underscore notation for nested keys
-      - Location__Name=Your Flying Field, City State
-      - Location__Latitude=0.0
-      - Location__Longitude=0.0
+      - Location__Name=Mary Cummings Park, Burlington MA
+      - Location__Latitude=42.4936
+      - Location__Longitude=-71.1967
       # Uncomment and adjust as needed:
       # - Thresholds__MaxWindSpeedMph=15
       # - Thresholds__MaxGustMph=20

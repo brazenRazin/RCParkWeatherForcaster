@@ -7,10 +7,10 @@ metadata:
     app.kubernetes.io/name: rc-park-weather-forcaster
 data:
   # ── Location ──────────────────────────────────────────────────────────────
-  Location__Name: "Your Flying Field, City State"
-  Location__Latitude: "0.0"
-  Location__Longitude: "0.0"
-  PirateWeatherApiKey: "YOUR_API_KEY_HERE"
+  Location__Name: "Mary Cummings Park, Burlington MA"
+  Location__Latitude: "42.4936"
+  Location__Longitude: "-71.1967"
+  PirateWeatherApiKey: "u8ejqiHmGNFa62zLcqTKfSohzOASGfGq"
 
   # ── Plane profile ─────────────────────────────────────────────────────────
   # Valid: Micro | Mini | ParkFlyer | Large | GiantScale

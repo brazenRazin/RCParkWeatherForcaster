@@ -12,10 +12,10 @@ spec:
   ingressClassName: "nginx"
   tls:
     - hosts:
-        - weather.yourdomain.com
+        - weather.mangoyan.net
       secretName: rc-park-weather-tls-cert
   rules:
-    - host: weather.yourdomain.com
+    - host: weather.mangoyan.net
       http:
         paths:
           - path: /
