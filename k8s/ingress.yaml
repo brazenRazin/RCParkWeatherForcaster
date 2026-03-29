@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rc-park-weather-ingress
+  namespace: rc-park-weather
+  annotations:
+    # Use cert-manager to provision the certificate
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Specify the ingress controller name
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  ingressClassName: "nginx"
+  tls:
+    - hosts:
+        - weather.yourdomain.com
+      secretName: rc-park-weather-tls-cert
+  rules:
+    - host: weather.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rc-park-weather-forcaster
+                port:
+                  number: 80

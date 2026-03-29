@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rc-park-weather-forcaster
+  namespace: rc-park-weather
+  labels:
+    app.kubernetes.io/name: rc-park-weather-forcaster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rc-park-weather-forcaster
+  template:
+    metadata:
+      labels:
+        app: rc-park-weather-forcaster
+    spec:
+      containers:
+        - name: rc-park-weather-forcaster
+          # ── Replace YOUR_REGISTRY with your actual registry, e.g.:
+          #    docker.io/yourusername/rc-park-weather-forcaster:latest
+          #    registry.example.com/rc-park-weather-forcaster:latest
+          image: ttl.sh/rc-park-weather-pirate:2h
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: rc-park-weather-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3

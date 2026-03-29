@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RC Park Weather Forcaster</title>
+  <meta name="description" content="Real-time RC flying weather assessment using NWS data — wind, gusts, precip, and hourly forecasts." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0a0d14;
+      --surface:    #111520;
+      --surface2:   #161c2d;
+      --border:     rgba(255,255,255,0.07);
+      --text:       #e8eaf2;
+      --muted:      #6b7280;
+      --go:         #22c55e;
+      --go-bg:      rgba(34,197,94,0.12);
+      --caution:    #f59e0b;
+      --caution-bg: rgba(245,158,11,0.12);
+      --nogo:       #ef4444;
+      --nogo-bg:    rgba(239,68,68,0.12);
+      --accent:     #6366f1;
+      --accent2:    #8b5cf6;
+      --cyan:       #22d3ee;
+      --radius:     14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99,102,241,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,92,246,0.14) 0%, transparent 60%);
+    }
+
+    /* ─── Header ────────────────────────────────────────── */
+    header {
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,13,20,0.88);
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { font-size: 26px; filter: drop-shadow(0 0 10px rgba(99,102,241,0.6)); }
+    .logo-text h1 {
+      font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #e8eaf2 30%, var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logo-text p { font-size: 0.72rem; color: var(--muted); }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    #last-updated { font-size: 0.72rem; color: var(--muted); }
+    .btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 0.78rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .btn:hover { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .spinning { animation: spin 0.9s linear infinite; display: inline-block; }
+
+    /* ─── Layout / main ─────────────────────────────────── */
+    main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+    /* ─── Alerts Banner ──────────────────────────────────── */
+    #alerts-banner {
+      display: none;
+      background: rgba(239,68,68,0.09);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    #alerts-banner .ah { font-weight: 600; color: var(--nogo); font-size: 0.825rem; margin-bottom: 6px; }
+    #alerts-banner li { font-size: 0.775rem; color: #fca5a5; padding: 3px 0 3px 18px; position: relative; list-style: none; }
+    #alerts-banner li::before { content: "⚠️"; position: absolute; left: 0; }
+
+    /* ─── Info cards ─────────────────────────────────────── */
+    .info-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
+    .info-card {
+      flex: 1; min-width: 180px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
+      position: relative; overflow: hidden;
+    }
+    .info-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .info-card label { display: block; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .info-card .val { font-size: 0.95rem; font-weight: 600; line-height: 1.4; }
+    .info-card .sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .plane-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+      background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc;
+    }
+    .thresholds-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; margin-top: 6px; }
+    .ti { font-size: 0.7rem; color: var(--muted); }
+    .ti span { color: var(--text); font-weight: 500; }
+
+    /* All-planes profile table */
+    .all-planes-card { min-width: 420px; flex: 2; }
+    .planes-profile-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.7rem; }
+    .planes-profile-table th {
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .planes-profile-table td { padding: 4px 8px; color: var(--muted); border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .planes-profile-table tr:last-child td { border-bottom: none; }
+    .planes-profile-table .plane-name { color: var(--text); font-weight: 600; white-space: nowrap; }
+    .planes-profile-table .active-row td { background: rgba(99,102,241,0.07); }
+    .planes-profile-table .active-row .plane-name { color: #a5b4fc; }
+    .pv-go   { color: var(--go) !important; font-weight: 600; }
+    .pv-caut { color: var(--caution) !important; font-weight: 600; }
+
+    /* ─── Section title ─────────────────────────────────── */
+    .section-title { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+    /* ─── Table ─────────────────────────────────────────── */
+    .table-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead th {
+      background: var(--surface2); padding: 11px 12px;
+      text-align: left; font-size: 0.64rem;
+      font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); white-space: nowrap; border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.025); }
+    tbody td { padding: 10px 12px; vertical-align: middle; }
+
+    /* Time cell */
+    .tc { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+    .tc .day { font-size: 0.62rem; color: #374151; display: block; }
+
+    /* Wind / gust */
+    .wind-main { font-weight: 600; color: var(--text); }
+    .gust-line { font-size: 0.7rem; color: var(--caution); margin-top: 1px; white-space: nowrap; }
+    .no-gust   { font-size: 0.68rem; color: #374151; }
+
+    /* Temp / precip */
+    .temp-val   { color: var(--cyan); font-weight: 500; }
+    .precip-val { color: #60a5fa; }
+
+    /* Conditions */
+    .cond-cell { color: var(--muted); font-size: 0.75rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ─── Plane rating columns ───────────────────────────── */
+    /* Each plane category column contains colored plane tags */
+    .planes-col { min-width: 96px; }
+    .plane-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 7px; border-radius: 10px;
+      font-size: 0.66rem; font-weight: 600; white-space: nowrap;
+      margin: 1px 1px;
+    }
+    .plane-tag.Go      { background: var(--go-bg);      color: var(--go);      border: 1px solid rgba(34,197,94,0.2); }
+    .plane-tag.Caution { background: var(--caution-bg); color: var(--caution); border: 1px solid rgba(245,158,11,0.2); }
+    .plane-tag.NoGo    { background: var(--nogo-bg);    color: var(--nogo);    border: 1px solid rgba(239,68,68,0.2); }
+    .planes-col-inner { display: flex; flex-wrap: wrap; gap: 2px; }
+
+    /* Smallest safe */
+    .smallest-safe { font-size: 0.72rem; color: var(--cyan); font-weight: 500; white-space: nowrap; }
+    .smallest-none { font-size: 0.7rem; color: var(--nogo); font-weight: 500; }
+
+    /* Notes/reasons */
+    .notes-cell { font-size: 0.68rem; color: #6b7280; max-width: 180px; }
+    .notes-cell span {
+      display: inline-block; background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border); border-radius: 3px;
+      padding: 1px 5px; margin: 1px 2px; white-space: nowrap;
+    }
+
+    /* Column header tinted */
+    .th-go      { color: var(--go) !important; }
+    .th-caution { color: var(--caution) !important; }
+    .th-nogo    { color: var(--nogo) !important; }
+
+    /* ─── Loading / error ────────────────────────────────── */
+    #loading {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 50vh; gap: 16px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(99,102,241,0.18);
+      border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.85s linear infinite;
+    }
+    .loading-lbl { color: var(--muted); font-size: 0.85rem; }
+    #error-state {
+      display: none; text-align: center; padding: 48px;
+      background: rgba(239,68,68,0.06);
+      border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius);
+    }
+    #error-state .ei { font-size: 2.8rem; margin-bottom: 10px; }
+    #error-state h2 { color: var(--nogo); font-size: 1rem; margin-bottom: 6px; }
+    #error-state p  { color: var(--muted); font-size: 0.8rem; }
+    #content { display: none; }
+
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes fadeIn  { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+    #content.visible   { display: block; animation: fadeIn 0.35s ease; }
+
+    @media (max-width: 640px) {
+      header, main { padding: 12px; }
+      .info-card { min-width: 100%; }
+      .all-planes-card { min-width: 100%; overflow-x: auto; }
+      .table-wrap { border: none; background: transparent; }
+      .table-wrap table, .table-wrap tbody, .table-wrap tr, .table-wrap td { display: block; width: 100%; }
+      .table-wrap thead { display: none; }
+      .table-wrap tr { margin-bottom: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; }
+      .table-wrap td { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: right; }
+      .table-wrap td:last-child { border-bottom: none; }
+      .table-wrap td::before { content: attr(data-label); font-weight: 600; color: var(--muted); text-transform: uppercase; font-size: 0.65rem; text-align: left; margin-right: 12px; flex-shrink: 0; }
+      .cond-cell { max-width: none; white-space: normal; overflow: visible; text-align: right; flex: 1; }
+      .planes-col-inner { justify-content: flex-end; }
+      .logo-text h1 { font-size: 1.05rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-icon">🛩️</span>
+    <div class="logo-text">
+      <h1>RC Park Weather Forcaster</h1>
+      <p>Powered by National Weather Service</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="last-updated"></span>
+    <button class="btn" id="refresh-btn" onclick="loadData()">
+      <span id="ri">↻</span> Refresh
+    </button>
+  </div>
+</header>
+
+<main>
+  <div id="loading"><div class="spinner"></div><p class="loading-lbl">Fetching weather from NWS…</p></div>
+  <div id="error-state">
+    <div class="ei">⛈️</div>
+    <h2>Could not load weather data</h2>
+    <p id="error-msg">Please try again.</p>
+  </div>
+
+  <div id="content">
+    <!-- Alerts -->
+    <div id="alerts-banner"><div class="ah">⚠️ Active NWS Alerts</div><ul id="alerts-list"></ul></div>
+
+    <!-- Info row -->
+    <div class="info-row">
+      <div class="info-card">
+        <label>Location</label>
+        <div class="val" id="loc-name">—</div>
+        <div class="sub" id="loc-city">—</div>
+      </div>
+      <div class="info-card all-planes-card">
+        <label>Plane Profiles — Wind &amp; Gust Thresholds</label>
+        <table class="planes-profile-table" id="planes-profile-table">
+          <thead>
+            <tr>
+              <th>Plane</th>
+              <th>✅ Go wind</th>
+              <th>⚠️ Caution wind</th>
+              <th>✅ Go gust</th>
+              <th>⚠️ Caution gust</th>
+            </tr>
+          </thead>
+          <tbody id="planes-profile-body">
+            <!-- filled by JS -->
+          </tbody>
+        </table>
+      </div>
+      <div class="info-card">
+        <label>Wind Thresholds (active profile)</label>
+        <div class="thresholds-grid">
+          <div class="ti">✅ Wind ≤ <span id="th-gw">—</span></div>
+          <div class="ti">✅ Gust ≤ <span id="th-gg">—</span></div>
+          <div class="ti">⚠️ Wind &gt; <span id="th-cw">—</span></div>
+          <div class="ti">⚠️ Gust &gt; <span id="th-cg">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hourly table -->
+    <div class="section-title">Hourly Forecast</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>🌡 Temp</th>
+            <th>💨 Wind</th>
+            <th>💧 Precip</th>
+            <th>Conditions</th>
+            <th class="th-go planes-col">✅ GO</th>
+            <th class="th-caution planes-col">⚠️ Caution</th>
+            <th class="th-nogo planes-col">❌ No-Go</th>
+            <th>Smallest Safe</th>
+          </tr>
+        </thead>
+        <tbody id="hourly-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Abbreviated display names for plane tags (keeps table compact)
+  const ABBREV = {
+    'Micro': '🪶 Micro',
+    'Mini': '🔹 Mini',
+    'Park Flyer': '🛩 Park',
+    'Large Sport/Trainer': '✈️ Large',
+    'Giant Scale': '🚀 Giant'
+  };
+
+  function rc(r) { return r === 'Go' ? 'Go' : r === 'Caution' ? 'Caution' : 'NoGo'; }
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return { day: DAYS[d.getDay()], time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+  }
+  function pad(n) { return String(n).padStart(2,'0'); }
+
+  async function loadData() {
+    const btn = document.getElementById('refresh-btn');
+    const ri  = document.getElementById('ri');
+    btn.disabled = true;
+    ri.classList.add('spinning');
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('error-state').style.display = 'none';
+    document.getElementById('content').classList.remove('visible');
+
+    try {
+      const res  = await fetch('/api/assessment');
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      render(await res.json());
+    } catch(e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-msg').textContent = e.message || 'Unknown error.';
+    } finally {
+      btn.disabled = false;
+      ri.classList.remove('spinning');
+    }
+  }
+
+  function render(d) {
+    // Header
+    const gen = new Date(d.generatedAt);
+    document.getElementById('last-updated').textContent =
+      `Updated ${gen.toLocaleDateString()} ${gen.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+
+    // Info cards
+    document.getElementById('loc-name').textContent  = d.locationName;
+    document.getElementById('loc-city').textContent  = `Near ${d.nearestCity}`;
+    const pp = d.planeProfile;
+    document.getElementById('th-gw').textContent = `${pp.goWindMph} mph`;
+    document.getElementById('th-gg').textContent = `${pp.goGustMph} mph`;
+    document.getElementById('th-cw').textContent = `${pp.cautionWindMph ?? pp.goWindMph} mph`;
+    document.getElementById('th-cg').textContent = `${pp.cautionGustMph ?? pp.goGustMph} mph`;
+
+    // All-planes profile table
+    const allPlanes = [
+      { name: 'Micro',               icon: '🪶', wingspan: '< 20"',    weight: '< 0.5 lb',  goW:  4, cautW:  7, goG:  6, cautG: 10 },
+      { name: 'Mini',                icon: '🔹', wingspan: '20–30"',   weight: '0.5–2 lb', goW:  7, cautW: 12, goG: 10, cautG: 16 },
+      { name: 'Park Flyer',          icon: '🛩',  wingspan: '30–55"',   weight: '2–5 lb',   goW: 12, cautW: 20, goG: 16, cautG: 25 },
+      { name: 'Large Sport/Trainer', icon: '✈️', wingspan: '55–80"',   weight: '5–15 lb',  goW: 18, cautW: 28, goG: 22, cautG: 35 },
+      { name: 'Giant Scale',         icon: '🚀', wingspan: '80"+',     weight: '15–40+ lb', goW: 22, cautW: 32, goG: 28, cautG: 40 }
+    ];
+    const activeProfile = pp.displayName;
+    const tbody2 = document.getElementById('planes-profile-body');
+    tbody2.innerHTML = allPlanes.map(p => {
+      const isActive = p.name === activeProfile || p.name.startsWith(activeProfile);
+      return `<tr class="${isActive ? 'active-row' : ''}">
+        <td class="plane-name">${p.icon} ${p.name}${isActive ? ' ★' : ''}<br><span style="font-size:0.62rem;font-weight:400;color:var(--muted)">${p.wingspan} &nbsp;&bull;&nbsp; ${p.weight}</span></td>
+        <td class="pv-go">≤ ${p.goW} mph</td>
+        <td class="pv-caut">&gt; ${p.goW} mph</td>
+        <td class="pv-go">≤ ${p.goG} mph</td>
+        <td class="pv-caut">&gt; ${p.goG} mph</td>
+      </tr>`;
+    }).join('');
+
+    // Alerts
+    const ab = document.getElementById('alerts-banner');
+    const al = document.getElementById('alerts-list');
+    if (d.activeAlerts && d.activeAlerts.length) {
+      al.innerHTML = d.activeAlerts.map(a => `<li>${esc(a)}</li>`).join('');
+      ab.style.display = 'block';
+    } else {
+      ab.style.display = 'none';
+    }
+
+    // Hourly table
+    const tbody = document.getElementById('hourly-body');
+    tbody.innerHTML = '';
+
+    const planeOrder = ['Micro', 'Mini', 'Park Flyer', 'Large Sport/Trainer', 'Giant Scale'];
+
+    for (const h of d.hourlyForecasts) {
+      const { day, time } = fmtTime(h.startTime);
+
+      // Wind + gust cell
+      const gustHtml = h.gustMph > 0
+        ? `<div class="gust-line">↑ gusts ${h.gustMph.toFixed(0)} mph</div>`
+        : `<div class="no-gust">no gusts</div>`;
+      const windHtml = `<div class="wind-main">${h.windMph.toFixed(0)} mph</div>${gustHtml}`;
+
+      // Plane rating columns — group by rating
+      const groups = { Go: [], Caution: [], NoGo: [] };
+      for (const name of planeOrder) {
+        const rating = h.planeRatings?.[name] ?? 'NoGo';
+        const key = rc(rating);
+        groups[key].push(name);
+      }
+
+      function planeTags(names, cls) {
+        if (!names.length) return `<span style="color:#374151;font-size:0.65rem">—</span>`;
+        return `<div class="planes-col-inner">${
+          names.map(n => `<span class="plane-tag ${cls}">${ABBREV[n] ?? n}</span>`).join('')
+        }</div>`;
+      }
+
+      // Smallest safe
+      const ssHtml = h.smallestSafePlane && !h.smallestSafePlane.startsWith('None')
+        ? `<span class="smallest-safe" title="${esc(h.smallestSafePlane)}">${esc(h.smallestSafePlane)}</span>`
+        : `<span class="smallest-none">None</span>`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="tc" data-label="Time"><span class="day">${day} </span>${time}</td>
+        <td class="temp-val" data-label="Temp">${h.tempF.toFixed(0)}°F</td>
+        <td data-label="Wind">${windHtml}</td>
+        <td class="precip-val" data-label="Precip">${h.precipPercent.toFixed(0)}%</td>
+        <td class="cond-cell" data-label="Conditions" title="${esc(h.shortForecast)}">${esc(h.shortForecast)}</td>
+        <td class="planes-col" data-label="✅ GO">${planeTags(groups.Go, 'Go')}</td>
+        <td class="planes-col" data-label="⚠️ Caution">${planeTags(groups.Caution, 'Caution')}</td>
+        <td class="planes-col" data-label="❌ No-Go">${planeTags(groups.NoGo, 'NoGo')}</td>
+        <td data-label="Smallest Safe">${ssHtml}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').classList.add('visible');
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  loadData();
+</script>
+</body>
+</html>

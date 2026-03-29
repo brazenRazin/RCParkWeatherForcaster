@@ -1,0 +1,15 @@
+services:
+  rc-park-weather-forcaster:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rc-park-weather-forcaster:latest
+    environment:
+      # Override any setting using double-underscore notation for nested keys
+      - Location__Name=Your Flying Field, City State
+      - Location__Latitude=0.0
+      - Location__Longitude=0.0
+      # Uncomment and adjust as needed:
+      # - Thresholds__MaxWindSpeedMph=15
+      # - Thresholds__MaxGustMph=20
+      # - ForecastHours=48

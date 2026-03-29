@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rc-park-weather-config
+  namespace: rc-park-weather
+  labels:
+    app.kubernetes.io/name: rc-park-weather-forcaster
+data:
+  # ── Location ──────────────────────────────────────────────────────────────
+  Location__Name: "Your Flying Field, City State"
+  Location__Latitude: "0.0"
+  Location__Longitude: "0.0"
+  PirateWeatherApiKey: "YOUR_API_KEY_HERE"
+
+  # ── Plane profile ─────────────────────────────────────────────────────────
+  # Valid: Micro | Mini | ParkFlyer | Large | GiantScale
+  PlaneSize: "ParkFlyer"
+
+  # ── Forecast window ───────────────────────────────────────────────────────
+  ForecastHours: "48"
+
+  # ── Optional manual threshold overrides (set -1 to use PlaneSize defaults)
+  # Thresholds__MaxWindSpeedMph: "-1"
+  # Thresholds__MaxGustMph: "-1"
+  # Thresholds__MaxPrecipProbabilityPercent: "20"
+  # Thresholds__MinTempF: "40"
+  # Thresholds__MaxTempF: "95"
