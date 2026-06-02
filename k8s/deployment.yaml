@@ -20,8 +20,8 @@ spec:
           # ── Replace YOUR_REGISTRY with your actual registry, e.g.:
           #    docker.io/yourusername/rc-park-weather-forcaster:latest
           #    registry.example.com/rc-park-weather-forcaster:latest
-          image: ttl.sh/rc-park-weather-forcaster:4h
-          imagePullPolicy: Always
+          image: rc-park-weather-forcaster:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
